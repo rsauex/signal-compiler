@@ -1,117 +1,135 @@
 (defpackage #:signal
-  (:use #:cl #:lazy-list #:lexer #:parser))
+  (:use #:cl #:lazy-list #:lexer #:parser #:parser-creation))
 
 (in-package #:signal)
 
 (defparser signal
-  (signal-program program)
-  (program (:or ("PROGRAM" identifier ";" blk ".")
-                ("PROCEDURE" identifier parameters? ";" blk ";")))
-  (blk (decls "BEGIN" stmt* "END"))
-  (decls (const-decls?
-          var-decls?
-          math-func-decls?
-          proc-decls?))
+  (signal-program -> program)
 
-  (const-decls? (:or :eps ("CONST" const-decl*)))
-  (const-decl* (:* :eps const-decl))
-  (const-decl (identifier "=" constant ";"))
-  (constant (minus? unsigned-number))
-  (minus? (:or :eps "-"))
+  (program -> "PROGRAM" identifier ";" blk "."
+           -> "PROCEDURE" identifier parameters? ";" blk ";")
+  
+  (blk -> decls "BEGIN" stmt* "END")
+  (decls -> const-decls?
+             var-decls?
+             math-func-decls?
+             proc-decls?)
 
-  (var-decls? (:or :eps ("VAR" var-decl*)))
-  (var-decl* (:* :eps var-decl))
-  (var-decl (identifier+ ":" var-attr+ ";"))
-  (identifier+ (:+ "," identifier))
-  (var-attr+ (:+ :eps var-attr))
-  (var-attr (:or "SIGNAL"
-                 "INTEGER"
-                 "FLOAT"
-                 "BLOCKFLOAT"
-                 "EXT"
-                 ("[" range+ "]")))
-  (range+ (:+ "," range))
-  (range (unsigned-integer ".." unsigned-integer))
+  
+  (const-decls? -> :eps
+                -> "CONST" const-decl*)
+  
+  (const-decl* -> * :eps const-decl)
+  (const-decl -> identifier "=" constant ";")
+  (constant -> minus? unsigned-number)
+  (minus? -> :eps
+          -> "-")
 
-  (math-func-decls? (:or :eps ("DEFFUNC" math-func-decl*)))
-  (math-func-decl* (:* :eps math-func-decl))
-  (math-func-decl (identifier "=" expr math-func-attrs ";"))
-  (math-func-attrs ("\\" unsigned-integer "," unsigned-integer))
+  
+  (var-decls? -> :eps
+              -> "VAR" var-decl*)
+  
+  (var-decl* -> * :eps var-decl)
+  (var-decl -> identifier+ ":" var-attr+ ";")
+  (identifier+ -> + "," identifier)
+  (var-attr+ -> + :eps var-attr)
+  (var-attr -> "SIGNAL"
+            -> "INTEGER"
+            -> "FLOAT"
+            -> "BLOCKFLOAT"
+            -> "EXT"
+            -> "[" range+ "]")
+  (range+ -> + "," range)
+  (range -> unsigned-integer ".." unsigned-integer)
 
-  (proc-decls? (:or :eps proc-decl+))
-  (proc-decl+ (:+ :eps proc-decl))
-  (proc-decl ("PROCEDURE" identifier parameters? ";" blk ";"))
-  (parameters? (:or :eps ("(" var-decl* ")")))
+  (math-func-decls? -> :eps
+                    -> "DEFFUNC" math-func-decl*)
+  (math-func-decl* -> * :eps math-func-decl)
+  (math-func-decl -> identifier "=" expr math-func-attrs ";")
+  (math-func-attrs -> "\\" unsigned-integer "," unsigned-integer)
 
-  (stmt* (:* :eps stmt))
-  (stmt (:or (identifier dimension? ":=" expr :. ";")
-             (identifier actual-arguments? ";")
-             (:{ "IF" :! cond-expr :< "THEN" :> stmt* :< else-part? "ENDIF" :. ";" :})
-             ("WHILE" cond-expr "DO" stmt* "ENDWHILE" ";")
-             ("LOOP" stmt* "ENDLOOP" ";")
-             ("FOR"  for-decl "DO" stmt* "ENDFOR" ";")
-             ("CASE" expr "OF" alternative* "ENDCASE" ";")
-             ("LINK" identifier "," (:lex unsigned-integer) ";")
-             ("IN" (:lex unsigned-integer) ";")
-             ("OUT" (:lex unsigned-integer) ";")
-             ("RETURN" ";")
-             (";")))
+  (proc-decls? -> :eps
+               -> proc-decl+)
+  (proc-decl+ -> + :eps proc-decl)
+  (proc-decl -> "PROCEDURE" identifier parameters? ";" blk ";")
+  (parameters? -> :eps
+               -> "(" var-decl* ")")
 
-  (else-part? (:or :eps ("ELSE" :> :v  stmt* :<)))
+  (stmt* -> * :eps stmt)
+  (stmt -> identifier dimension? ":=" expr :. ";"
+        -> identifier actual-arguments? ";"
+        -> :{ "IF" :! cond-expr :< "THEN" :> stmt* :< else-part? "ENDIF" :. ";" :}
+        -> "WHILE" cond-expr "DO" stmt* "ENDWHILE" ";"
+        -> "LOOP" stmt* "ENDLOOP" ";"
+        -> "FOR"  for-decl "DO" stmt* "ENDFOR" ";"
+        -> "CASE" expr "OF" alternative* "ENDCASE" ";"
+        -> "LINK" identifier "," (:lex unsigned-integer) ";"
+        -> "IN" (:lex unsigned-integer) ";"
+        -> "OUT" (:lex unsigned-integer) ";"
+        -> "RETURN" ";"
+        -> ";")
 
-  (for-decl (identifier ":=" expr "TO" expr))
+  (else-part? -> :eps
+              -> "ELSE" :> :v  stmt* :<)
 
-  (actual-arguments? (:or :eps actual-arguments))
-  (actual-arguments ("(" actual-argument* ")"))
-  (actual-argument* (:* "," expr))
+  (for-decl -> identifier ":=" expr "TO" expr)
 
-  (alternative* (:* :eps alternative))
-  (alternative (expr ":" "/" stmt* "\\"))
+  (actual-arguments? -> :eps
+                     -> actual-arguments)
+  (actual-arguments -> "(" actual-argument* ")")
+  (actual-argument* -> * "," expr)
 
-  (cond-expr (:or (cond-expr1 "OR" cond-expr)
-                  (:^ cond-expr1)))
-  (cond-expr1 (:or (cond-expr2 "AND" cond-expr1)
-                   (:^ cond-expr2))
-              :mimic cond-expr)
-  (cond-expr2 (:or (expr "<" expr)
-                   (expr "<=" expr)
-                   (expr "=" expr)
-                   (expr "<>" expr)
-                   (expr ">=" expr)
-                   (expr ">" expr)
-                   ("[" cond-expr "]")
-                   ("NOT" cond-expr2))
-              :mimic cond-expr)
+  (alternative* -> * :eps alternative)
+  (alternative -> expr ":" "/" stmt* "\\")
 
-  (expr (:or (expr1 "+" expr)
-             (expr1 "-" expr)
-             (expr1 "!" expr)
-             (:^ expr1)))
-  (expr1 (:or (expr2 "*" expr1)
-              (expr2 "/" expr1)
-              (expr2 "&" expr1)
-              (expr2 "MOD" expr1)
-              (:^ expr2))
-         :mimic expr)
-  (expr2 (:or unsigned-number
-              (identifier dimension?)
-              (identifier actual-arguments)
-              ("(" expr ")")
-              ("-" expr2)
-              ("^" expr2))
-         :mimic expr)
+  (cond-expr -> cond-expr1 "OR" cond-expr
+             -> :^ cond-expr1)
+  (cond-expr1 -> (cond-expr2 "AND" cond-expr1)
+              -> :^ cond-expr2
+              :options :mimic cond-expr)
+  (cond-expr2 -> (expr "<" expr)
+              -> (expr "<=" expr)
+              -> (expr "=" expr)
+              -> (expr "<>" expr)
+              -> (expr ">=" expr)
+              -> (expr ">" expr)
+              -> ("[" cond-expr "]")
+              -> ("NOT" cond-expr2)
+              :options :mimic cond-expr)
 
-  (variabl (identifier dimension?))
-  (dimension? (:or :eps ("[" expr+ "]")))
-  (expr+ (:+ "," expr))
+  (expr -> (expr1 "+" expr)
+        -> (expr1 "-" expr)
+        -> (expr1 "!" expr)
+        -> (:^ expr1))
+  (expr1 -> (expr2 "*" expr1)
+         -> (expr2 "/" expr1)
+         -> (expr2 "&" expr1)
+         -> (expr2 "MOD" expr1)
+         -> (:^ expr2)
+         :options :mimic expr)
+  (expr2 -> unsigned-number
+         -> (identifier dimension?)
+         -> (identifier actual-arguments)
+         -> ("(" expr ")")
+         -> ("-" expr2)
+         -> ("^" expr2)
+         :options :mimic expr)
 
-  (unsigned-number (unsigned-integer fractional-part?))
-  (fractional-part? (:or :eps ("#" sign? unsigned-integer)))
+  (variabl -> identifier dimension?)
+  (dimension? -> :eps
+              -> ("[" expr+ "]"))
+  (expr+ -> + "," expr)
 
-  (identifier (:lex identifier))
+  (unsigned-number -> unsigned-integer fractional-part?)
+  (fractional-part? -> :eps
+                    -> ("#" sign? unsigned-integer))
 
-  (unsigned-integer (:lex digits-string))
-  (sign? (:or :eps "+" "-")))
+  (identifier -> :lex identifier)
+
+  (unsigned-integer -> :lex digits-string)
+  (sign? -> :eps
+         -> "+"
+         -> "-"))
 
 (deflexer signal
   (letter (:r #\A #\Z) :fragment)
