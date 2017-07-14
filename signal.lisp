@@ -57,7 +57,7 @@
 
   (actual-arguments -> "(" actual-argument* ")"
                     :options :mimic actual-arguments?)
-  (actual-argument* -> * "," expr)
+  (actual-argument -> expr)
 
   (alternative -> expr ":" "/" stmt* "\\")
 
@@ -92,9 +92,8 @@
          -> "(" expr ")"
          -> "-" expr2
          -> "^" expr2
-         :options :mimic expr)
+         :options :mimic expr1)
 
-  (variabl -> identifier dimension?)
   (dimension -> "[" expr+ "]"
              :options :mimic dimension?)
 
@@ -127,6 +126,7 @@
   (math-func-decl* -> * :eps math-func-decl)
   (stmt* -> * :eps stmt)
   (alternative* -> * :eps alternative)
+  (actual-argument* -> * "," actual-argument)
 
   (var-attr+ -> + :eps var-attr)
   (identifier+ -> + "," identifier)
