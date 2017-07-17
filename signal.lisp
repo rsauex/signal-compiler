@@ -1,5 +1,5 @@
 (defpackage #:signal
-  (:use #:cl #:lazy-list #:lexer #:parser #:parser-creation))
+  (:use #:cl #:lazy-list #:cl-yatlp))
 
 (in-package #:signal)
 
@@ -12,13 +12,11 @@
   (blk -> decls "BEGIN" stmt* "END")
   (decls -> const-decls? var-decls? math-func-decls? proc-decls?)
 
-  (const-decls -> "CONST" const-decl*
-               :options :mimic const-decls?)
+  (const-decls -> "CONST" const-decl*)
   (const-decl -> identifier "=" constant ";")
   (constant -> minus? unsigned-number)
 
-  (var-decls -> "VAR" var-decl*
-             :options :mimic var-decls?)
+  (var-decls -> "VAR" var-decl*)
   (var-decl -> identifier+ ":" var-attr+ ";")
   (var-attr -> "SIGNAL"
             -> "INTEGER"
@@ -28,16 +26,13 @@
             -> "[" range+ "]")
   (range -> unsigned-integer ".." unsigned-integer)
 
-  (math-func-decls -> "DEFFUNC" math-func-decl*
-                   :options :mimic math-func-decls?)
+  (math-func-decls -> "DEFFUNC" math-func-decl*)
   (math-func-decl -> identifier "=" expr math-func-attrs ";")
   (math-func-attrs -> "\\" unsigned-integer "," unsigned-integer)
 
-  (proc-decls -> proc-decl+
-              :options :mimic proc-decls?)
+  (proc-decls -> proc-decl+)
   (proc-decl -> "PROCEDURE" identifier parameters? ";" blk ";")
-  (parameters -> "(" var-decl* ")"
-              :options :mimic parameters?)
+  (parameters -> "(" var-decl* ")")
 
   (stmt -> identifier dimension? ":=" expr :. ";"
         -> identifier actual-arguments? ";"
@@ -55,8 +50,7 @@
 
   (for-decl -> identifier ":=" expr "TO" expr)
 
-  (actual-arguments -> "(" actual-argument* ")"
-                    :options :mimic actual-arguments?)
+  (actual-arguments -> "(" actual-argument* ")")
   (actual-argument -> expr)
 
   (alternative -> expr ":" "/" stmt* "\\")
@@ -64,8 +58,7 @@
   (cond-expr -> cond-expr1 "OR" cond-expr
              -> :^ cond-expr1)
   (cond-expr1 -> cond-expr2 "AND" cond-expr1
-              -> :^ cond-expr2
-              :options :mimic cond-expr)
+              -> :^ cond-expr2)
   (cond-expr2 -> expr "<" expr
               -> expr "<=" expr
               -> expr "=" expr
@@ -73,8 +66,7 @@
               -> expr ">=" expr
               -> expr ">" expr
               -> "[" cond-expr "]"
-              -> "NOT" cond-expr2
-              :options :mimic cond-expr)
+              -> "NOT" cond-expr2)
 
   (expr -> expr1 "+" expr
         -> expr1 "-" expr
@@ -84,28 +76,22 @@
          -> expr2 "/" expr1
          -> expr2 "&" expr1
          -> expr2 "MOD" expr1
-         -> :^ expr2
-         :options :mimic expr)
+         -> :^ expr2)
   (expr2 -> unsigned-number
          -> identifier dimension?
          -> identifier actual-arguments
          -> "(" expr ")"
          -> "-" expr2
-         -> "^" expr2
-         :options :mimic expr1)
+         -> "^" expr2)
 
-  (dimension -> "[" expr+ "]"
-             :options :mimic dimension?)
+  (dimension -> "[" expr+ "]")
 
   (unsigned-number -> unsigned-integer fractional-part?)
-  (fractional-part -> "#" sign? unsigned-integer
-                   :options :mimic fractional-part?)
+  (fractional-part -> "#" sign? unsigned-integer)
 
-  (minus -> "-"
-         :options :mimic minus?)
+  (minus -> "-")
   (sign -> "+"
-        -> "-"
-        :options :mimic sign?)
+        -> "-")
   
   (identifier -> :lex identifier)
   (unsigned-integer -> :lex digits-string)
