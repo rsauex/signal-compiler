@@ -96,17 +96,6 @@
   (identifier -> :lex identifier)
   (unsigned-integer -> :lex digits-string)
 
-  (const-decls? -> :eps -> :^ const-decls)
-  (minus? -> :eps -> :^ minus)
-  (var-decls? -> :eps -> :^ var-decls)
-  (math-func-decls? -> :eps -> :^ math-func-decls)
-  (proc-decls? -> :eps -> :^ proc-decls)
-  (parameters? -> :eps -> :^ parameters)
-  (actual-arguments? -> :eps -> :^ actual-arguments)
-  (dimension? -> :eps -> dimension)
-  (sign? -> :eps -> :^ sign)
-  (fractional-part? -> :eps -> fractional-part)
-
   (const-decl* -> * :eps const-decl)
   (var-decl* -> * :eps var-decl)
   (math-func-decl* -> * :eps math-func-decl)
