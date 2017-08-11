@@ -6,59 +6,62 @@
 (defparser signal
   (signal-program -> program)
 
-  (program -> "PROGRAM" identifier :. ";" :v  blk :. "."
-           -> "PROCEDURE" identifier parameters? :. ";" :v blk :. ";")
+  (program -> "PROGRAM" id :. ";" blk :. "."
+           -> "PROCEDURE" id :. parameters? :. ";" blk :. ";")
   
-  (blk -> decls "BEGIN" stmt* "END")
+  (blk -> :> decls :< :v "BEGIN" :> stmt* :< :v "END")
   (decls -> const-decls? var-decls? math-func-decls? proc-decls?)
 
-  (const-decls -> "CONST" const-decl*)
-  (const-decl -> identifier "=" constant ";")
-  (constant -> minus? unsigned-number)
+  (const-decls -> :v :{ "CONST" :! const-decl* :< :})
+  (const-decl -> id "=" constant :. ";" :v)
+  (constant -> minus :. unsigned-number
+            -> unsigned-number)
 
-  (var-decls -> "VAR" var-decl*)
-  (var-decl -> identifier+ ":" var-attr+ ";")
+  (var-decls -> :v :{ "VAR" :! var-decl* :< :})
+  (var-decl -> id-list :. ":" var-attr+ :. ";" :v)
   (var-attr -> "SIGNAL"
             -> "INTEGER"
             -> "FLOAT"
             -> "BLOCKFLOAT"
             -> "EXT"
-            -> "[" range+ "]")
-  (range -> unsigned-integer ".." unsigned-integer)
+            -> "[" :. range-list :. "]")
+  (range -> unsigned-integer :. ".." :. unsigned-integer)
 
-  (math-func-decls -> "DEFFUNC" math-func-decl*)
-  (math-func-decl -> identifier "=" expr math-func-attrs ";")
-  (math-func-attrs -> "\\" unsigned-integer "," unsigned-integer)
+  (math-func-decls -> :v :{ "DEFFUNC" :! math-func-decl* :< :})
+  (math-func-decl -> id "=" expr math-func-attrs :. ";" :v)
+  (math-func-attrs -> "\\" unsigned-integer :. ".." :. unsigned-integer)
 
   (proc-decls -> proc-decl+)
-  (proc-decl -> "PROCEDURE" identifier parameters? ";" blk ";")
-  (parameters -> "(" var-decl* ")")
+  (proc-decl -> :v :{ "PROCEDURE" id :. parameters? :. ";" blk :. ";" :v :})
+  (parameters -> "(" :. parameter-list :. ")")
+  (parameter -> id-list :. ":" var-attr+)
+  (parameter-list :* -> ";" parameter)
 
-  (stmt -> identifier dimension? ":=" expr :. ";"
-        -> identifier actual-arguments? ";"
-        -> :{ "IF" :! cond-expr :< "THEN" :> stmt* :< "ENDIF" :. ";" :}
-        -> :{ "IF" :! cond-expr :< "THEN" :> stmt* :< "ELSE" :> :v stmt* :< "ENDIF" :. ";" :}
-        -> "WHILE" cond-expr "DO" stmt* "ENDWHILE" ";"
-        -> "LOOP" stmt* "ENDLOOP" ";"
-        -> "FOR"  for-decl "DO" stmt* "ENDFOR" ";"
-        -> "CASE" expr "OF" alternative* "ENDCASE" ";"
-        -> "LINK" identifier "," unsigned-integer ";"
-        -> "IN" unsigned-integer ";"
-        -> "OUT" unsigned-integer ";"
-        -> "RETURN" ";"
+  (stmt -> :v id :. dimension? ":=" expr
+        -> :v id :. actual-arguments?
+        -> :v :{ "IF" :! cond-expr :< "THEN" :> stmt* :< :v "ENDIF" :}
+        -> :v :{ "IF" :! cond-expr :< "THEN" :> stmt* :< :v "ELSE" :> stmt* :< :v "ENDIF" :}
+        -> :v :{ "WHILE" :! cond-expr :< "DO" :> stmt* :< :v "ENDWHILE" :}
+        -> :v :{ "LOOP" :> stmt* :< :v "ENDLOOP" :}
+        -> :v :{ "FOR" :!  for-decl :< "DO" :> stmt* :< :v "ENDFOR" :}
+        -> :v :{ "CASE" :! expr :< "OF" :> alternative* :< :v "ENDCASE" :}
+        -> :v "LINK" id "," unsigned-integer
+        -> :v "IN" unsigned-integer
+        -> :v "OUT" unsigned-integer
+        -> :v "RETURN"
         -> ";")
 
-  (for-decl -> identifier ":=" expr "TO" expr)
+  (for-decl -> id ":=" expr "TO" expr)
 
-  (actual-arguments -> "(" actual-argument* ")")
-  (actual-argument -> expr)
+  (actual-arguments -> "(" :. actual-argument-list :. ")")
+  (actual-argument --> expr)
 
-  (alternative -> expr ":" "/" stmt* "\\")
+  (alternative -> :v :{ "/" expr :. ":"  :> stmt* :< :})
 
   (cond-expr -> cond-expr1 "OR" cond-expr
-             -> :^ cond-expr1)
+             --> cond-expr1)
   (cond-expr1 -> cond-expr2 "AND" cond-expr1
-              -> :^ cond-expr2)
+              --> cond-expr2)
   (cond-expr2 -> expr "<" expr
               -> expr "<=" expr
               -> expr "=" expr
@@ -71,43 +74,38 @@
   (expr -> expr1 "+" expr
         -> expr1 "-" expr
         -> expr1 "!" expr
-        -> :^ expr1)
+        --> expr1)
   (expr1 -> expr2 "*" expr1
          -> expr2 "/" expr1
          -> expr2 "&" expr1
          -> expr2 "MOD" expr1
-         -> :^ expr2)
-  (expr2 -> unsigned-number
-         -> identifier dimension?
-         -> identifier actual-arguments
-         -> "(" expr ")"
-         -> "-" expr2
-         -> "^" expr2)
+         --> expr2)
+  (expr2 --> unsigned-number
+         --> id
+         -> id :. dimension
+         -> id :. actual-arguments
+         -> "(" :. expr :. ")"
+         -> "-" :. expr2
+         -> "^" :. expr2)
 
-  (dimension -> "[" expr+ "]")
+  (dimension -> "[" :. expr-list :. "]")
 
-  (unsigned-number -> unsigned-integer fractional-part?)
-  (fractional-part -> "#" sign? unsigned-integer)
+  (unsigned-number -> unsigned-integer :. fractional-part
+                   -> unsigned-integer)
+  (fractional-part -> "#" :. sign? :. unsigned-integer)
 
   (minus -> "-")
   (sign -> "+"
         -> "-")
   
-  (identifier -> :lex identifier)
+  (id -> :lex identifier)
   (unsigned-integer -> :lex digits-string)
 
-  (const-decl* -> * :eps const-decl)
-  (var-decl* -> * :eps var-decl)
-  (math-func-decl* -> * :eps math-func-decl)
-  (stmt* -> * :eps stmt)
-  (alternative* -> * :eps alternative)
-  (actual-argument* -> * "," actual-argument)
+  (actual-argument-list :* -> "," actual-argument)
 
-  (var-attr+ -> + :eps var-attr)
-  (identifier+ -> + "," identifier)
-  (range+ -> + "," range)
-  (proc-decl+ -> + :eps proc-decl)
-  (expr+ -> + "," expr))
+  (id-list :+ -> "," id)
+  (range-list :+ -> "," range)
+  (expr-list :+ -> "," expr))
 
 (deflexer signal
   (letter (:r #\A #\Z) :fragment)
