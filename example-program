@@ -1,0 +1,14 @@
+PROGRAM PG0;
+CONST C0 = 123;
+      C1 = -234;
+VAR V0: INTEGER;
+    V1: FLOAT;
+    V2: SIGNAL;
+    V3: BLOCKFLOAT;
+    V4: EXT;
+    V5: [0..4];
+    V6: [0..10, 0..20];
+BEGIN
+  V0 := 100 / 10;
+  OUT 123;
+END.

@@ -1,8 +1,0 @@
-PROGRAM PG0;
-CONST C0 = 123;
-      C1 = 234;
-VAR A0: INTEGER;
-    A1: FLOAT; 
-BEGIN
-  OUT 123;
-END.
