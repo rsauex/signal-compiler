@@ -1,8 +1,8 @@
-program pg0;
-const c0 = 123;
-      c1 = 234;
-var a0: integer;
-    a1: float; 
-begin
-  out 123;
-end.
+PROGRAM PG0;
+CONST C0 = 123;
+      C1 = 234;
+VAR A0: INTEGER;
+    A1: FLOAT; 
+BEGIN
+  OUT 123;
+END.
